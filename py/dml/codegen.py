@@ -2334,22 +2334,24 @@ def stmt_hashforeach(stmt, location, scope):
     else:
         raise ENLST(stmt.site, lst)
 
-def foreach_constant_list(site, itername, lst, statement, location, scope):
-    assert isinstance(lst, AbstractList)
-    spec = []
-    context = GotoLoopContext()
-    with context:
-        for items in lst.iter():
+import concurrent.futures
+import threading
+
+def myfunc(items, lock, spec, context, site, itername, lst, statement, location, scope):
+    if True:
+        if True:
             loopvars = tuple(mkLit(site, '_ai%d_%d' % (context.id, dim),
                                    TInt(32, True))
                              for dim in range(len(items.dimsizes)))
             loopscope = Symtab(scope)
             loopscope.add(ExpressionSymbol(
                 itername, items.expr(loopvars), site))
+            lock.acquire()
             stmt = codegen_statement(statement, location, loopscope)
+            lock.release()
 
             if isinstance(stmt, Null):
-                continue
+                return #continue
 
             decls = []
             for dim in reversed(range(len(items.dimsizes))):
@@ -2367,6 +2369,21 @@ def foreach_constant_list(site, itername, lst, statement, location, scope):
                     stmt)
             spec.append(mkCompound(site, decls + [stmt]))
 
+def foreach_constant_list(site, itername, lst, statement, location, scope):
+    assert isinstance(lst, AbstractList)
+    spec = []
+    context = GotoLoopContext()
+    with context:
+        #for items in lst.iter():
+        lock = threading.Lock()
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            # Start the load operations and mark each future with its URL
+            future_to_url = [executor.submit(myfunc, items, lock, spec, context, site, itername, lst, statement, location, scope) for items in lst.iter()]
+            for future in concurrent.futures.as_completed(future_to_url):
+                #print(future)
+                pass
+   
         return [mkUnrolledLoop(site, spec,
                                context.label if context.used else None)]
 
