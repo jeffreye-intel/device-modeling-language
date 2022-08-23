@@ -2759,12 +2759,33 @@ def generate_cfile(device, footers,
         c_file.commit()
     c_file = None
 
+import cProfile, pstats, io
+from pstats import SortKey
+
+def stats(pr):
+    s = io.StringIO()
+    sortby = SortKey.CUMULATIVE
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+    print("\n".join((s.getvalue().split("\n")[:20])))
+
+def stats1(pr):
+    s = io.StringIO()
+    sortby = SortKey.TIME
+    ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+    ps.print_stats()
+
+    print("\n".join((s.getvalue().split("\n")[:20])))
+
 def generate_cfile_body(device, footers, full_module, filename_prefix):
 
     # An output buffer for code that should be included in the init function
     init_code = StrOutput()
     init_code.out('', postindent=1)
 
+    pr = cProfile.Profile()
+
+    pr.enable()
     # The marker must be generated before any lines annotated with #line
     if dml.globals.debuggable:
         generate_marker(device)
@@ -2918,6 +2939,9 @@ def generate_cfile_body(device, footers, full_module, filename_prefix):
                 report(PNO_WUNUSED(method.site, 'method', method.logname()))
             else:
                 report(PWUNUSED(method.site, 'method', method.logname()))
+    pr.disable()
+    stats(pr)
+    stats1(pr)
 
 def tmprename(base):
     try:
