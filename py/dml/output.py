@@ -57,7 +57,7 @@ class NoOutput(Output):
 class FileOutput(Output):
     def __init__(self, filename):
         super(FileOutput, self).__init__()
-        self.set_file(open(filename + ".tmp", "w"), filename)
+        self.set_file(open(filename + ".tmp", "w",buffering=131072), filename)
 
     def set_file(self, f, filename):
         self.filename = filename
@@ -83,10 +83,14 @@ class FileOutput(Output):
 class StrOutput(Output):
     def __init__(self, indent=0):
         super(StrOutput, self).__init__(indent)
-        self.buf = ''
+        self.string_list = []
 
     def write(self, s):
-        self.buf += s
+        self.string_list.append(s)
+
+    @property
+    def buf(self):
+        return "".join(self.string_list)
 
 indent_level = 4
 
