@@ -167,7 +167,7 @@ class DMLObject(object):
         for n in self._components:
             if n.objtype in objtypes:
                 yield n
-            yield from n.get_recursive_components(*objtypes))
+            yield from n.get_recursive_components(*objtypes)
         # print 'GETRECCOMPS', self, objtypes, '=>', comps
 
 
@@ -379,7 +379,7 @@ class Field(CompositeObject):
     def simple_storage(self):
         """Return true if the allocated value is stored in struct member
         __DMLfield."""
-        return not bool([x for x in self.get_recursive_components]('session', 'saved')])
+        return not bool([x for x in self.get_recursive_components('session', 'saved')])
 
     @property
     def name_anonymized(self):
