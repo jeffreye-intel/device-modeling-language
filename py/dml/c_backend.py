@@ -1120,7 +1120,7 @@ def event_callbacks(event, indices):
     return result
 
 def generate_register_events(device):
-    events = device.get_recursive_components('event')
+    events = [x for x in device.get_recursive_components('event')]
     for (method, _) in list(simple_events.items()):
         add_variable_declaration(
             'event_class_t *%s' % (crep.get_evclass(method),))
@@ -1154,9 +1154,8 @@ def generate_register_events(device):
     splitting_point()
 
 def generate_events(device):
-    events = device.get_recursive_components('event')
 
-    for event in events:
+    for event in device.get_recursive_components('event'):
         add_variable_declaration('event_class_t *%s%s' %
                                  (crep.get_evclass(event),
                                   ''.join('[' + str(s) + ']'
@@ -1420,9 +1419,8 @@ def generate_deinit(device):
         scope = Symtab(global_scope)
         code = []
         # Cancel all events
-        events = device.get_recursive_components('event')
 
-        for event in events:
+        for event in device.get_recursive_components('event'):
             method = event.get_component('_cancel_all', 'method')
             for index_ints in event.all_indices():
                 # Functions called from pre_delete_instance shouldn't throw any
@@ -2123,9 +2121,9 @@ def trait_trampoline_name(method, vtable_trait):
 
 def flatten_object_subtree(node):
     '''return a list of all composite subobjects inside node'''
-    return [node] + node.get_recursive_components(
+    return [node] + [x for x in node.get_recursive_components(
         'event', 'port', 'implement', 'attribute', 'connect',
-        'interface', 'bank', 'group', 'register', 'field', 'subdevice')
+        'interface', 'bank', 'group', 'register', 'field', 'subdevice')]
 
 class ParamValue(ABC):
     indexed = False
