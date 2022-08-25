@@ -167,7 +167,7 @@ class DMLObject(object):
         for n in self._components:
             if n.objtype in objtypes:
                 yield n
-            yeild from n.get_recursive_components(*objtypes))
+            yield from n.get_recursive_components(*objtypes))
         # print 'GETRECCOMPS', self, objtypes, '=>', comps
 
 
