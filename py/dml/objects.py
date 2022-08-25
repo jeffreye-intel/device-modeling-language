@@ -166,10 +166,10 @@ class DMLObject(object):
         comps = []
         for n in self._components:
             if n.objtype in objtypes:
-                comps.append(n)
-            comps.extend(n.get_recursive_components(*objtypes))
+                yield n
+            yeild from n.get_recursive_components(*objtypes))
         # print 'GETRECCOMPS', self, objtypes, '=>', comps
-        return comps
+
 
     def recursive_components_postorder(self):
         comps = []
@@ -359,7 +359,7 @@ class Register(CompositeObject):
     @property
     def simple_storage(self):
         return self.wholefield and \
-               not bool(self.get_recursive_components('session', 'saved'))
+               not bool([x for x in self.get_recursive_components('session', 'saved')])
 
     @property
     def name_anonymized(self):
@@ -379,7 +379,7 @@ class Field(CompositeObject):
     def simple_storage(self):
         """Return true if the allocated value is stored in struct member
         __DMLfield."""
-        return not bool(self.get_recursive_components('session', 'saved'))
+        return not bool([x for x in self.get_recursive_components]('session', 'saved')])
 
     @property
     def name_anonymized(self):
