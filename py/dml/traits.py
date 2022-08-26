@@ -571,8 +571,8 @@ class ObjTraits(SubTrait):
         matches = [trait for trait in self.direct_parents if name in trait.method_impl_traits]
         assert len(matches) < 2
         if len(matches) == 1:
-            ref = ObjTraitRef(site, self.node, trait, indices)
-            method = trait.lookup(name, ref, site)
+            ref = ObjTraitRef(site, self.node, matches[0], indices)
+            method = matches[0].lookup(name, ref, site)
             assert method
             return method
         else:
