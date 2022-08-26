@@ -397,18 +397,9 @@ def memoization_common_prelude(name, site, outp, throws, make_ref):
 
 def declarations(scope):
     "Get all local declarations in a scope as a list of Declaration objects"
-    decls = []
-    for sym in scope.symbols():
-        if sym.pseudo:
-            # dbg("declarations(%s): skipping %r" % (scope.id, sym))
-            continue
-        if sym.stmt:
-            continue
-        decl = sym_declaration(sym)
-        if decl:
-            decls.append(decl)
+    decls = [sym_declaration(sym) for sym in scope.symbols() if not sym.pseudo and not sym.stmt]
 
-    return decls
+    return [d for d in decls if d is not None]
 
 # Expression dispatch
 
@@ -1254,7 +1245,7 @@ def eval_initializer(site, etype, astinit, location, scope, static):
     """Deconstruct an AST for an initializer, and return a
        corresponding initializer object. Report EDATAINIT errors upon
        invalid initializers.
-       
+
        Initializers are required to be constant for data objects and
        static variables. Local variables can be initialized with
        non-constant expressions. However, initializers for local
@@ -2763,7 +2754,7 @@ def codegen_inline(site, meth_node, indices, inargs, outargs,
                                 parmtype if parmtype else arg.ctype(),
                                 meth_node.name)
                     for (arg, var, (parmname, parmtype)) in zip(
-                            outargs, outvars, meth_node.outp)] 
+                            outargs, outvars, meth_node.outp)]
             exit_handler = GotoExit_dml12()
             with exit_handler:
                 code = [codegen_statement(meth_node.astcode,
