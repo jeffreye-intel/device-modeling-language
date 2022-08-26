@@ -1377,14 +1377,41 @@ def get_initializer(site, etype, astinit, location, scope):
     raise ICE(site, "No initializer for %r" % (etype,))
 
 statement_dispatcher = ast.astdispatcher('stmt_')
+import multiprocessing
+import concurrent.futures
+import threading
 
+depth  = 0
 def codegen_statements(trees, *args):
+    global depth
     stmts = []
-    for tree in trees:
-        try:
-            stmts.extend(statement_dispatcher.dispatch(tree, *args))
-        except DMLError as e:
-            report(e)
+    len_ = len(trees)
+    futures = []
+    depth_prev = depth
+    depth += 1
+    if depth in [0]:
+        max_workers = 24
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            print(trees)
+            for tree in trees:
+                try:
+                    print(f"codegen_statements: depth = {depth} {len_}")
+                    # Start the load operations and mark each future with its URL
+                    futures.append(executor.submit(statement_dispatcher.dispatch, tree, *args))
+                except DMLError as e:
+                    report(e)
+
+        for f in futures:
+            stmts.extend(f.result())
+    else:
+        for tree in trees:
+            try:
+                stmts.extend(statement_dispatcher.dispatch(tree, *args))
+            except DMLError as e:
+                report(e)
+
+    depth = depth_prev
+
     return stmts
 
 def codegen_statement(tree, *args):

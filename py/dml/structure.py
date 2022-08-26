@@ -1397,6 +1397,9 @@ ident_re = re.compile(r'[A-Za-z_][\w_]*')
 # TODO: we should probably split up mkobj into several methods with
 # clearer responsibilities
 def mkobj2(obj, obj_specs, params, each_stmts):
+
+    import concurrent.futures
+    futures = []
     for param in params:
         obj.add_component(param)
 
@@ -1452,7 +1455,7 @@ def mkobj2(obj, obj_specs, params, each_stmts):
     saved = {}
     # list of export stmnts
     exports = []
-    for (stmts, rank) in shallow_subobjs:
+    def doit(stmts, rank):
         for s in stmts:
             if s.kind == 'error':
                 _, esite, msg = s
@@ -1506,6 +1509,13 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                 exports.append(s)
             else:
                 raise ICE(s.site, 'UNKNOWN %r' % (s,))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        for (stmts, rank) in shallow_subobjs:
+            futures.append(executor.submit(doit, stmts, rank))
+        for f in futures:
+            f.result()
+
 
     subobj_defs = {}
 
@@ -1603,6 +1613,7 @@ def mkobj2(obj, obj_specs, params, each_stmts):
         report_pbefaft(obj, method_asts)
 
     subobjs = []
+    futures = []
 
     if dml.globals.dml_version == (1, 2):
         # If there are no fields defined, create a field that covers
@@ -1612,7 +1623,8 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                 for (objtype, _, _, _) in list(subobj_defs.values())):
             # The implicit field instantiates the built-in field
             # template and does nothing else.
-            subobjs.append(mkobj(
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                futures.append(executor.submit( mkobj,
                 None, 'field', (),
                 [ObjectSpec(
                     obj.site,
@@ -1622,6 +1634,8 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                     Rank(set(), RankDesc('verbatim', '<implicit field>')),
                     [(obj.site, dml.globals.templates['field'])], [], [], [])],
                 obj, each_stmts))
+    for f in futures:
+        subobjs.append(f.result())
 
     for name in sorted(sessions):
         session_spec = sessions[name]
@@ -1642,8 +1656,8 @@ def mkobj2(obj, obj_specs, params, each_stmts):
 
     # map logical subobj name to whatever set the name (ident or name param)
     subobj_name_defs = {}
-
-    for name in sorted(subobj_defs, key=lambda name: name or ''):
+    print("len subobj_defs =" , len(subobj_defs))
+    def doit1(name):
         (objtype, ident, arrayinfo, subobj_specs) = subobj_defs[name]
         if (not obj.accepts_child_type(objtype)
             # HACK: disallow non-toplevel banks in DML 1.2, see SIMICS-19009
@@ -1651,8 +1665,10 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                 and obj.objtype != 'device'
                 and objtype == 'bank')):
             report(ENALLOW(subobj_specs[0].site, obj))
-            continue
+            #continue
+            return
         try:
+            print(f"ident = {ident}, {each_stmts}")
             subobj = mkobj(ident, objtype, arrayinfo, subobj_specs, obj,
                            each_stmts)
         except DMLError as e:
@@ -1663,12 +1679,20 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                     report(ENAMECOLL(subobj.name_site,
                                      subobj_name_defs[subobj.name],
                                      subobj.name))
-                    continue
+                    return #continue
                 subobj_name_defs[subobj.name] = (
                     subobj.name_site if
                     isinstance(subobj, objects.CompositeObject) else
                     subobj.site)
             subobjs.append(subobj)
+
+    futures = []
+    for name in sorted(subobj_defs, key=lambda name: name or ''):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures.append(executor.submit(doit1, name))
+    
+    for f in futures:
+        f.result()
 
     for o in subobjs:
         obj.add_component(o)

@@ -148,6 +148,7 @@ class ASTDispatchFnError(Exception):
     pass
 
 class astdispatcher(object):
+    depth = 0
     __slots__ = ('table', 'prefix')
     def __init__(self, prefix):
         self.table = {}
@@ -162,4 +163,13 @@ class astdispatcher(object):
         self.table[name] = fn
         return fn
     def dispatch(self, tree, *args):
-        return self.table[tree.kind](tree, *args)
+        #print(self.table)
+        print(f"depth {astdispatcher.depth}\n")
+        print(tree.kind)
+        print("\n")
+        print(tree)
+        print("\n\n")
+        astdispatcher.depth += 1
+        ret = self.table[tree.kind](tree, *args)
+        astdispatcher.depth -= 1
+        return ret
