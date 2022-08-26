@@ -3489,7 +3489,7 @@ def lookup_component(site, base, indices, name, only_local):
         assert isinstance(state_indices, tuple)
         if state_name == 'this':
             if isinstance(state_base, objects.Method):
-                base = base.parent
+                state_base = state_base.parent
             return mkNodeRef(state_site, state_base, state_indices)
 
         node = state_base.get_component(state_name)
@@ -3512,7 +3512,7 @@ def lookup_component(site, base, indices, name, only_local):
         # Search upwards in outer scopes if it wasn't found
         if not state_only_local and state_base.parent:
             if state_base.isindexed():
-                state_indices = state_indices[:-base.local_dimensions()]
+                state_indices = state_indices[:-state_base.local_dimensions()]
             # Update state for next call
             state_site = state_site
             state_base = state_base.parent
