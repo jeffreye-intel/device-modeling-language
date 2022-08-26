@@ -568,13 +568,15 @@ class ObjTraits(SubTrait):
     def lookup_shared_method_impl(self, site, name, indices):
         '''Return implementation of shared method provided by trait'''
         assert isinstance(indices, tuple)
-        for trait in self.direct_parents:
-            if name in trait.method_impl_traits:
-                ref = ObjTraitRef(site, self.node, trait, indices)
-                method = trait.lookup(name, ref, site)
-                assert method
-                return method
-        return None
+        matches = [trait for trait in self.direct_parents if name in trait.method_impl_traits]
+        assert len(matches) < 2
+        if len(matches) == 1:
+            ref = ObjTraitRef(site, self.node, trait, indices)
+            method = trait.lookup(name, ref, site)
+            assert method
+            return method
+        else:
+            return None
 
 class ReservedSymbol(NonValue):
     @auto_init
