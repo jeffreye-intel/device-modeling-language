@@ -3478,51 +3478,71 @@ class TraitMethodIndirect(TraitMethodRef):
 def lookup_component(site, base, indices, name, only_local):
     '''Lookup a name in object scope 'base' and return an
     Expression, or None.'''
-    assert isinstance(base, objects.DMLObject)
-    assert isinstance(indices, tuple)
+    state_site = site
+    state_base = base
+    state_indices = indices
+    state_name = name
+    state_only_local = only_local
 
-    if name == 'this':
-        if isinstance(base, objects.Method):
-            base = base.parent
-        return mkNodeRef(site, base, indices)
+    def lookup_single_step():
+        assert isinstance(state_base, objects.DMLObject)
+        assert isinstance(state_indices, tuple)
+        if state_name == 'this':
+            if isinstance(state_base, objects.Method):
+                base = base.parent
+            return mkNodeRef(state_site, state_base, state_indices)
 
-    node = base.get_component(name)
-    if node:
-        if node.objtype == 'parameter':
-            return node.get_expr(indices).copy(site)
-        if node.isindexed() and len(indices) < node.dimensions:
-            return NodeArrayRef(site, node, indices)
-        else:
-            return mkNodeRef(site, node, indices)
+        node = state_base.get_component(state_name)
+        if node:
+            if node.objtype == 'parameter':
+                return node.get_expr(state_indices).copy(state_site)
+            if node.isindexed() and len(state_indices) < node.dimensions:
+                return NodeArrayRef(state_site, node, state_indices)
+            else:
+                return mkNodeRef(state_site, node, state_indices)
 
-    if base.traits:
-        # A shared method implementation does not end up as an object
-        # in the object hierarchy, so need to look for it explicitly
-        shared_method = base.traits.lookup_shared_method_impl(
-            site, name, indices)
-        if shared_method is not None:
-            return shared_method
+        if state_base.traits:
+            # A shared method implementation does not end up as an object
+            # in the object hierarchy, so need to look for it explicitly
+            shared_method = state_base.traits.lookup_shared_method_impl(
+                state_site, state_name, state_indices)
+            if shared_method is not None:
+                return shared_method
 
-    # Search upwards in outer scopes if it wasn't found
-    if not only_local and base.parent:
-        if base.isindexed():
-            indices = indices[:-base.local_dimensions()]
-        return lookup_component(site, base.parent, indices, name, False)
+        # Search upwards in outer scopes if it wasn't found
+        if not state_only_local and state_base.parent:
+            if state_base.isindexed():
+                state_indices = state_indices[:-base.local_dimensions()]
+            # Update state for next call
+            state_site = state_site
+            state_base = state_base.parent
+            state_indices = state_indices
+            state_name = state_name
+            state_only_local = False
+            return lookup_single_step
 
-    if dml.globals.compat_dml12 and not base.parent:
-        # Last resort is to look for components in anonymous banks
-        for bank in base.get_components('bank'):
-            if not bank.name:
-                node = bank.get_component(name)
-                if node:
-                    if node.objtype == 'parameter':
-                        return node.get_expr(indices).copy(site)
-                    if node.isindexed() and len(indices) < node.dimensions:
-                        return NodeArrayRef(site, node, indices)
-                    else:
-                        return mkNodeRef(site, node, indices)
+        if dml.globals.compat_dml12 and not state_base.parent:
+            # Last resort is to look for components in anonymous banks
+            for bank in state_base.get_components('bank'):
+                if not bank.name:
+                    node = bank.get_component(state_name)
+                    if node:
+                        if node.objtype == 'parameter':
+                            return node.get_expr(state_indices).copy(state_site)
+                        if node.isindexed() and len(state_indices) < node.dimensions:
+                            return NodeArrayRef(state_site, node, state_indices)
+                        else:
+                            return mkNodeRef(state_site, node, state_indices)
 
-    return None
+        return None
+
+    def lookup_infinite_depth():
+        result = lookup_single_step
+        while result == lookup_single_step:
+            result = lookup_single_step()
+        return result
+
+    return lookup_infinite_depth()
 
 
 # Return the node type for a node
