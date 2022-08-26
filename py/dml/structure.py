@@ -1397,8 +1397,8 @@ ident_re = re.compile(r'[A-Za-z_][\w_]*')
 # TODO: we should probably split up mkobj into several methods with
 # clearer responsibilities
 def mkobj2(obj, obj_specs, params, each_stmts):
-    for param in params:
-        obj.add_component(param)
+    [obj.add_component(param) for param in params]
+
 
     # For each symbol defined in this object's scope, map symbol name
     # to site. For name collision detection.
@@ -1426,9 +1426,7 @@ def mkobj2(obj, obj_specs, params, each_stmts):
 
     obj_traits = []
     for obj_spec in obj_specs:
-        for (issite, tpl) in obj_spec.templates:
-            if tpl.trait:
-                obj_traits.append((issite, tpl.trait))
+        obj_traits.extend([(issite, tpl) for (issite, tpl) in obj_spec.templates if tpl.trait])
 
     for obj_spec in obj_specs:
         for (templates, spec) in obj_spec.in_eachs:
@@ -1670,8 +1668,7 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                     subobj.site)
             subobjs.append(subobj)
 
-    for o in subobjs:
-        obj.add_component(o)
+    [obj.add_component(o) for o in subobjs]
 
     # Map name to MethodFunc.
     trait_method_overrides = {}
@@ -1765,8 +1762,8 @@ def mkobj2(obj, obj_specs, params, each_stmts):
                                            funnum))
                         else:
                             used[funnum] = b
-        for b in banks:
-            sort_registers(b)
+                            
+        [sort_registers(b) for b in banks]
         set_confidential_object(obj)
 
         if dml.globals.dml_version == (1, 2):
